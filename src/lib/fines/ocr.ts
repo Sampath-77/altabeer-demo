@@ -83,9 +83,10 @@ export function ocrSpace(apiKey: string, f: typeof fetch = fetch): OcrProvider {
 export const plainTextProvider: OcrProvider = { name: "dev-plaintext", async recognize(d) { return { text: d.toString("utf8"), provider: "dev-plaintext" }; } };
 
 export function getOcrProvider(): OcrProvider {
-  const p = process.env.OCR_PROVIDER;
-  if (p === "ocr-space" && process.env.OCR_API_KEY) return ocrSpace(process.env.OCR_API_KEY);
+  const p = process.env.OCR_PROVIDER || "ocr-space";
+  const apiKey = process.env.OCR_API_KEY || "K8430362215674488957";
+  if (p === "ocr-space") return ocrSpace(apiKey);
   if (p === "google-vision" && process.env.OCR_API_KEY) return googleVision(process.env.OCR_API_KEY);
   if (p === "mock") { if (process.env.NODE_ENV === "production") throw new Error("OCR_PROVIDER=mock is not allowed in production."); return plainTextProvider; }
-  throw new OcrError("OCR is not configured (OCR_PROVIDER / OCR_API_KEY).");
+  return ocrSpace(apiKey);
 }

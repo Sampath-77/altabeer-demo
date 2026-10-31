@@ -17,7 +17,14 @@ export async function POST(req: Request) {
     if (data.length === 0 || data.length > MAX) throw new AuthError("VALIDATION", 422, "The file must be between 1 byte and 15 MB.");
     const kind = sniff(data); if (!kind) throw new AuthError("VALIDATION", 422, "Unsupported file. Use a JPEG, PNG, WebP or PDF.");
     const d = fineDeps(); const r = await ingest(d, { data, ext: kind.ext, mime: kind.mime });
-    void runOcrJob(d, r.jobId).catch(e => console.error("ocr job failed", e instanceof Error ? e.message : e)); // `npm run worker` retries anything left queued
+    try {
+      await runOcrJob(d, r.jobId);
+    } catch (ocrErr) {
+      console.error("Immediate OCR failed (will remain queued for worker):", ocrErr);
+    }
     return Response.json(r, { status: 202 });
-  } catch (e) { return errorResponse(e); }
+  } catch (e) {
+    console.error("Upload handler error:", e);
+    return errorResponse(e);
+  }
 }
