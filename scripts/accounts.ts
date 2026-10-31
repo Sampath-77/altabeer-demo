@@ -23,8 +23,8 @@ async function main() {
       if (isOdooConfigured()) {
         const e = await getOdooClient().getEmployee(emp);
         if (!e) die(`Employee ${emp} was not found in the ERP.`);
-        if (!e.active) die(`Employee ${emp} is inactive in the ERP.`);
-        console.log(`Linking to ERP employee: ${e.name}`);
+        if (!e!.active) die(`Employee ${emp} is inactive in the ERP.`);
+        console.log(`Linking to ERP employee: ${e!.name}`);
       }
     } else if (role === "DRIVER") {
       die("Drivers need --employee <Odoo employee ID>");
