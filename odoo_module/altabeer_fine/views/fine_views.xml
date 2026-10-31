@@ -1,0 +1,28 @@
+<odoo>
+  <record id="altabeer_fine_list" model="ir.ui.view">
+    <field name="name">altabeer.fine.list</field>
+    <field name="model">altabeer.fine</field>
+    <field name="arch" type="xml">
+      <list><field name="name"/><field name="plate"/><field name="violation_at"/><field name="amount"/><field name="amount_paid"/><field name="state"/></list>
+    </field>
+  </record>
+  <record id="altabeer_fine_form" model="ir.ui.view">
+    <field name="name">altabeer.fine.form</field>
+    <field name="model">altabeer.fine</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <group><field name="name"/><field name="authority"/><field name="plate"/><field name="vehicle_id"/><field name="driver_id"/><field name="vendor_id"/></group>
+            <group><field name="violation_at"/><field name="amount"/><field name="penalty"/><field name="amount_paid"/><field name="deadline"/><field name="state"/></group>
+          </group>
+          <group><field name="description"/><field name="closed_reason"/><field name="app_id" readonly="1"/></group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="altabeer_fine_action" model="ir.actions.act_window">
+    <field name="name">Traffic fines</field><field name="res_model">altabeer.fine</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="altabeer_fine_menu" name="Traffic fines" action="altabeer_fine_action" parent="fleet.menu_root" sequence="90"/>
+</odoo>

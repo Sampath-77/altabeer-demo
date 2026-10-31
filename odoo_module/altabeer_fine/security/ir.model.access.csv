@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_altabeer_fine_user,altabeer.fine user,model_altabeer_fine,base.group_user,1,0,0,0
+access_altabeer_fine_manager,altabeer.fine manager,model_altabeer_fine,hr.group_hr_manager,1,1,1,0

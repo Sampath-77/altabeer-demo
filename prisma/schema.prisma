@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DRIVER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum FineWorkflow {
+  NEW
+  REVIEW_REQUIRED
+  APPROVED
+  ACK_PENDING
+  ACKNOWLEDGED
+  PAYMENT_PENDING
+  PAID_AWAITING_VERIFICATION
+  UNDER_REVIEW
+  DISPUTED
+  CLOSED
+  REJECTED
+}
+
+enum OcrStatus {
+  QUEUED
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum MatchStatus {
+  UNMATCHED
+  MATCHED
+  AMBIGUOUS
+  NO_ASSIGNMENT
+  OVERLAPPING_ASSIGNMENT
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+// Identity only. Employee master data lives in Odoo.
+model User {
+  id                   String                     @id @default(cuid())
+  loginId              String                     @unique
+  passwordHash         String
+  role                 Role
+  status               AccountStatus              @default(ACTIVE)
+  odooEmployeeId       Int?                       @unique
+  odooUserId           Int?
+  failedLogins         Int                        @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  refreshTokens        RefreshToken[]
+  notifications        Notification[]
+  dailyReports         DailyDriverReport[]
+  complianceFlags      DriverComplianceFlag[]
+  complianceExemptions DriverComplianceExemption[]
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Fine {
+  id                 String       @id @default(cuid())
+  odooRecordId       Int?         @unique
+  fineReference      String?
+  issuingAuthority   String?
+  violationAt        DateTime?
+  noticeReceivedAt   DateTime?
+  plateRaw           String?
+  plateNormalized    String?
+  plateEmirate       String?
+  plateCode          String?
+  vehicleOdooId      Int?
+  driverOdooId       Int?
+  vendorOdooId       Int?
+  assignmentEvidence Json?
+  amount             Decimal?     @db.Decimal(12,2)
+  additionalPenalty  Decimal?     @db.Decimal(12,2)
+  amountPaid         Decimal      @default(0) @db.Decimal(12,2)
+  currency           String       @default("AED")
+  deadline           DateTime?
+  deadlineSource     String?
+  matchStatus        MatchStatus  @default(UNMATCHED)
+  workflow           FineWorkflow @default(REVIEW_REQUIRED)
+  reviewReasons      String[]
+  evidenceKeys       String[]
+  description        String?
+  vehicleMakeModel   String?
+  duplicateOfId      String?
+  manualOverride     Boolean      @default(false)
+  rejectedReason     String?
+  acknowledgedAt     DateTime?
+  disputeReason      String?
+  paymentEvidenceKeys String[]
+  paymentClaimedAmount Decimal?   @db.Decimal(12,2)
+  paymentReference   String?
+  paymentVerifiedAt  DateTime?
+  closedAt           DateTime?
+  closedReason       String?
+  escalationLevel    Int          @default(0)
+  lastEscalatedAt    DateTime?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  ocrJobs            OcrJob[]
+  @@index([plateNormalized])
+  @@index([vehicleOdooId, violationAt])
+  @@index([workflow, deadline])
+  @@index([fineReference, issuingAuthority])
+}
+
+model OcrJob {
+  id         String    @id @default(cuid())
+  fineId     String?
+  sourceKey  String
+  provider   String?
+  status     OcrStatus @default(QUEUED)
+  rawText    String?
+  fields     Json?
+  confidence Json?
+  errors     String[]
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+  fine       Fine?     @relation(fields: [fineId], references: [id])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  fineId    String?
+  readAt    DateTime?
+  dedupeKey String?   @unique
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt])
+}
+
+model NotificationLog {
+  id               String   @id @default(cuid())
+  fineId           String?
+  channel          String
+  recipient        String
+  templateRef      String?
+  dedupeKey        String   @unique
+  status           String
+  providerRef      String?
+  providerResponse Json?
+  attempts         Int      @default(0)
+  createdAt        DateTime @default(now())
+}
+
+model SyncOutbox {
+  id             String       @id @default(cuid())
+  idempotencyKey String       @unique
+  operation      String
+  payload        Json
+  status         OutboxStatus @default(PENDING)
+  attempts       Int          @default(0)
+  nextAttemptAt  DateTime     @default(now())
+  lastError      String?
+  odooRecordId   Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  @@index([status, nextAttemptAt])
+}
+
+model SyncState {
+  resource   String    @id
+  lastSyncAt DateTime?
+  lastError  String?
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+  @@index([entity, entityId])
+}
+
+// Idempotency + receipt tracking for expense submissions (Odoo owns the expense itself).
+model ExpenseSubmission {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique
+  userId         String
+  receiptKey     String
+  odooExpenseId  Int?
+  attached       Boolean  @default(false)
+  lastStatus     String?
+  createdAt      DateTime @default(now())
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DAILY DRIVER VIOLATION REPORT & COMPLIANCE MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ReportType {
+  VIOLATION
+  NO_VIOLATION
+}
+
+enum ViolationCategory {
+  SPEEDING
+  PARKING_VIOLATION
+  RED_LIGHT_VIOLATION
+  WRONG_PARKING
+  LANE_VIOLATION
+  VEHICLE_ACCIDENT
+  VEHICLE_DAMAGE
+  VEHICLE_INCIDENT
+  OTHER
+}
+
+enum ReportStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  REVIEWED
+  CORRECTION_REQUESTED
+  AMENDED
+}
+
+enum FlagStatus {
+  ACTIVE
+  RESOLVED
+  OVERRIDDEN
+  CANCELLED
+}
+
+enum FlagResolutionReason {
+  REPORT_SUBMITTED
+  SUBMITTED_EXTERNAL_CHANNEL
+  INCORRECT_REQUIREMENT
+  APPROVED_EXCEPTION
+  ADMIN_TEMPORARY_OVERRIDE
+  OTHER
+}
+
+// One mandatory daily report per driver per Dubai reporting date.
+model DailyDriverReport {
+  id                     String       @id @default(cuid())
+  reportReference        String       @unique // REP-YYYYMMDD-XXXX
+  driverUserId           String
+  odooEmployeeId         Int
+  reportingDate          String       // "YYYY-MM-DD" in Asia/Dubai
+  shiftAttendanceId      Int?         // Odoo attendance record id, if known
+  vehicleOdooId          Int?
+  vehiclePlateSnapshot   String?
+  vehicleModelSnapshot   String?
+  reportType             ReportType
+  violationCategory      ViolationCategory?
+  violationDescription   String?
+  violationLocation      String?
+  violationDatetime      DateTime?
+  fineReference          String?
+  reportedFineAmount     Decimal?     @db.Decimal(12, 2)
+  driverExplanation      String?
+  declarationConfirmed   Boolean      @default(false)
+  submissionStatus       ReportStatus @default(SUBMITTED)
+  submittedLate          Boolean      @default(false)
+  adminRemarks           String?
+  correctionNote         String?
+  submittedAt            DateTime     @default(now())
+  reviewedAt             DateTime?
+  reviewedBy             String?      // Admin user id
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  user           User                    @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+  attachments    DriverReportAttachment[]
+  complianceFlags DriverComplianceFlag[] @relation("FlagSourceReport")
+
+  // One primary report per driver per date (amendments handled via status transitions)
+  @@unique([driverUserId, reportingDate])
+  @@index([odooEmployeeId, reportingDate])
+  @@index([reportingDate])
+  @@index([submissionStatus])
+}
+
+// Supporting evidence: photos, fine notices, documents.
+model DriverReportAttachment {
+  id               String            @id @default(cuid())
+  reportId         String
+  storageKey       String            // Private .storage key
+  originalFilename String
+  mimeType         String
+  fileSizeBytes    Int
+  uploadedAt       DateTime          @default(now())
+
+  report           DailyDriverReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  @@index([reportId])
+}
+
+// A compliance restriction flag — blocks check-in on next eligible day.
+model DriverComplianceFlag {
+  id                String               @id @default(cuid())
+  flagReference     String               @unique // FLG-YYYYMMDD-XXXX
+  driverUserId      String
+  odooEmployeeId    Int
+  reportingDate     String               // The missed Dubai date: "YYYY-MM-DD"
+  flagType          String               @default("MISSING_DAILY_REPORT")
+  reason            String
+  status            FlagStatus           @default(ACTIVE)
+  adminEscalated    Boolean              @default(false) // If true, only admin can resolve
+  sourceReportId    String?
+  resolvedAt        DateTime?
+  resolvedBy        String?              // Admin user id or "SYSTEM"
+  resolutionReason  FlagResolutionReason?
+  resolutionRemarks String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user         User               @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+  sourceReport DailyDriverReport? @relation("FlagSourceReport", fields: [sourceReportId], references: [id], onDelete: SetNull)
+
+  @@index([driverUserId, status])
+  @@index([odooEmployeeId, reportingDate])
+  @@index([status])
+  @@index([reportingDate])
+}
+
+// Admin-approved exemption — prevents obligation from being generated.
+model DriverComplianceExemption {
+  id             String   @id @default(cuid())
+  driverUserId   String
+  odooEmployeeId Int
+  reportingDate  String   // "YYYY-MM-DD"
+  reason         String
+  approvedBy     String   // Admin user id
+  approvedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+
+  @@unique([driverUserId, reportingDate])
+  @@index([odooEmployeeId, reportingDate])
+}
+
+// Tamper-evident audit trail for all compliance actions.
+model DriverComplianceAuditLog {
+  id              String   @id @default(cuid())
+  driverUserId    String
+  odooEmployeeId  Int
+  action          String   // FLAG_CREATED | REPORT_SUBMITTED | FLAG_RESOLVED | FLAG_OVERRIDDEN | EXEMPTION_GRANTED | REPORT_REVIEWED | CORRECTION_REQUESTED
+  relatedReportId String?
+  relatedFlagId   String?
+  performedBy     String   // User id or "SYSTEM"
+  performedByRole String   // "ADMIN" | "DRIVER" | "SYSTEM"
+  reason          String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([driverUserId, createdAt])
+  @@index([action])
+  @@index([relatedFlagId])
+}
+
+// Auto-generated daily summary snapshot (one per reporting date, generated by worker).
+model DailyComplianceSummary {
+  id                     String   @id @default(cuid())
+  reportingDate          String   @unique // "YYYY-MM-DD"
+  totalExpected          Int
+  totalSubmitted         Int
+  violationCount         Int
+  noViolationCount       Int
+  missingCount           Int
+  pendingCount           Int
+  exemptedCount          Int
+  awaitingReviewCount    Int
+  activeRestrictionsCount Int
+  lateSubmissionsCount   Int
+  generatedAt            DateTime @default(now())
+  emailSentAt            DateTime?
+  emailStatus            String?  // "sent" | "failed" | "skipped"
+  summaryJson            Json?    // Full snapshot for historical reference
+
+  @@index([reportingDate])
+}

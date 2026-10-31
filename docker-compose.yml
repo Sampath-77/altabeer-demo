@@ -1,0 +1,23 @@
+# Example only. Put HTTPS (reverse proxy) in front of `web`. Secrets come from .env, never from this file.
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_DB: altabeer, POSTGRES_USER: altabeer, POSTGRES_PASSWORD: "${DB_PASSWORD}" }
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U altabeer"], interval: 10s, retries: 5 }
+  web:
+    build: .
+    env_file: .env
+    environment: { DATABASE_URL: "postgresql://altabeer:${DB_PASSWORD}@db:5432/altabeer", STORAGE_PATH: /data/storage }
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["127.0.0.1:3000:3000"]
+    volumes: ["evidence:/data/storage"]
+    healthcheck: { test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"], interval: 30s, retries: 3 }
+  worker:
+    build: .
+    command: ["npm", "run", "worker"]
+    env_file: .env
+    environment: { DATABASE_URL: "postgresql://altabeer:${DB_PASSWORD}@db:5432/altabeer", STORAGE_PATH: /data/storage }
+    depends_on: { db: { condition: service_healthy } }
+    volumes: ["evidence:/data/storage"]
+volumes: { pgdata: {}, evidence: {} }
