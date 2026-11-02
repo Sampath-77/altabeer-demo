@@ -135,7 +135,11 @@ export function createJson2Client(base: string, db: string, apiKey: string, time
       return (await exp([["id", "=", id]], { limit: 1 }))[0];
     },
     async attachReceipt(expenseId, file) {
-      await call("ir.attachment", "create", { vals_list: [{ name: file.name, raw: file.data.toString("base64"), datas: file.data.toString("base64"), res_model: ODOO_MAP.expense.model, res_id: expenseId, mimetype: file.mime }] });
+      try {
+        await call("ir.attachment", "create", { vals_list: [{ name: file.name, raw: file.data.toString("base64"), res_model: ODOO_MAP.expense.model, res_id: expenseId, mimetype: file.mime }] });
+      } catch {
+        await call("ir.attachment", "create", { vals_list: [{ name: file.name, datas: file.data.toString("base64"), res_model: ODOO_MAP.expense.model, res_id: expenseId, mimetype: file.mime }] });
+      }
     },
     async listExpenses(employeeId, { since, limit }) {
       const d: unknown[] = [["employee_id", "=", employeeId]];
