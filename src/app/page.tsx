@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bell, Globe, CheckCircle2, Camera, AlertTriangle, FileText, ClipboardList, AlertCircle } from "lucide-react";
+import { Bell, Globe, CheckCircle2, Camera, AlertTriangle, FileText, ClipboardList, AlertCircle, LogOut } from "lucide-react";
 import Nav from "@/components/Nav";
 import ShiftToggle from "@/components/ShiftToggle";
-import { useApi, fmtTime, fmtDuration } from "@/lib/client";
+import { useApi, fmtTime, fmtDuration, api } from "@/lib/client";
 
 type NA = { available: false; reason: string };
 interface ComplianceFlag { id: string; flagReference: string; reportingDate: string; reason: string }
@@ -38,6 +38,11 @@ export default function Home() {
   const compliance = data?.compliance ?? null;
   const restricted = compliance?.restricted ?? false;
 
+  async function logout() {
+    await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    location.href = "/login";
+  }
+
   return (
     <div className="app">
       <header className="hdr">
@@ -46,6 +51,7 @@ export default function Home() {
           <div className="who"><small>{date}</small><strong>{greet}{first ? `, ${first}` : ""}</strong></div>
           <button className="pill" aria-label="Language: English"><Globe size={14} /> EN</button>
           <Link href="/notifications" className="icon-btn" aria-label={`Notifications${data?.unreadNotifications ? `, ${data.unreadNotifications} unread` : ""}`} style={{ position: "relative" }}><Bell size={20} />{!!data?.unreadNotifications && <span style={{ position: "absolute", top: 6, right: 6, width: 10, height: 10, borderRadius: 5, background: "var(--orange)" }} />}</Link>
+          <button onClick={logout} className="icon-btn" aria-label="Sign out" title="Sign out"><LogOut size={18} /></button>
         </div>
         <div className="shiftbar">
           <div>
