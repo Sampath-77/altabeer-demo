@@ -129,6 +129,7 @@ model Fine {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   ocrJobs            OcrJob[]
+  challanDocuments   ChallanDocument[]
   @@index([plateNormalized])
   @@index([vehicleOdooId, violationAt])
   @@index([workflow, deadline])
@@ -148,6 +149,27 @@ model OcrJob {
   createdAt  DateTime  @default(now())
   finishedAt DateTime?
   fine       Fine?     @relation(fields: [fineId], references: [id])
+}
+
+model ChallanDocument {
+  id               String   @id @default(cuid())
+  fineId           String?
+  storageProvider  String   @default("db") // "db", "vercel-blob", "s3", "local"
+  storageKey       String   @unique
+  originalFilename String
+  mimeType         String
+  fileSizeBytes    Int
+  uploadedBy       String?
+  storageStatus    String   @default("AVAILABLE") // "AVAILABLE", "FAILED", "PENDING"
+  fileData         Bytes?
+  externalUrl      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  fine             Fine?    @relation(fields: [fineId], references: [id], onDelete: SetNull)
+
+  @@index([fineId])
+  @@index([storageKey])
 }
 
 model Notification {

@@ -81,9 +81,16 @@ export async function assess(d: Pick<Deps, "odoo" | "repo" | "now">, f: Pick<Fin
   return { patch, reasons: [...reasons], candidates };
 }
 
-export async function ingest(d: Deps, file: { data: Buffer; ext: string; mime: string }): Promise<{ fineId: string; jobId: string }> {
-  const key = await d.storage.put(file.data, file.ext);
+export async function ingest(d: Deps, file: { data: Buffer; ext: string; mime: string; originalFilename?: string; uploadedBy?: string }): Promise<{ fineId: string; jobId: string }> {
+  const key = await d.storage.put(file.data, file.ext, {
+    filename: file.originalFilename,
+    mime: file.mime,
+    uploadedBy: file.uploadedBy,
+  });
   const fine = await d.repo.createFine({ noticeReceivedAt: new Date(d.now?.() ?? Date.now()), evidenceKeys: [key] });
+  if (d.storage.linkFine) {
+    await d.storage.linkFine(key, fine.id);
+  }
   const job = await d.repo.createJob({ fineId: fine.id, sourceKey: key });
   return { fineId: fine.id, jobId: job.id };
 }

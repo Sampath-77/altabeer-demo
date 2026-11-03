@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Download, ExternalLink, AlertCircle, CheckCircle, Clock, ShieldAlert } from "lucide-react";
+import { Download, ExternalLink, AlertCircle, CheckCircle, Clock, ShieldAlert, Upload } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
 import { api, useApi } from "@/lib/client";
 
@@ -63,6 +63,15 @@ interface Detail {
   };
   reasons: { code: string; message: string }[];
   evidenceUrl: string | null;
+  downloadUrl?: string | null;
+  isPdf?: boolean;
+  document?: {
+    filename: string;
+    mimeType: string;
+    fileSizeBytes: number;
+    status: string;
+    uploadedAt: string;
+  } | null;
 }
 
 type Cand = { id: number; plate: string; model?: string };
@@ -93,6 +102,33 @@ export default function Review() {
   const [busy, setBusy] = useState(false);
   const [dup, setDup] = useState(false);
   const [activeTab, setActiveTab] = useState<"review" | "all-fields" | "raw">("review");
+  const [docError, setDocError] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+
+  async function handleReupload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDoc(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/admin/fines/${id}/evidence`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err?.error?.message || "Failed to upload document.");
+        return;
+      }
+      setDocError(false);
+      reload();
+    } catch {
+      alert("Upload failed. Please check network connection and try again.");
+    } finally {
+      setUploadingDoc(false);
+    }
+  }
 
   const f = data?.fine;
   const ocrFields = data?.job?.fields || {};
@@ -201,23 +237,42 @@ export default function Review() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 16, alignItems: "start" }}>
           {/* SECTION 7: ORIGINAL CHALLAN DOCUMENT */}
           <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
               <b>Section 7 — Original Challan Document</b>
-              {data.evidenceUrl && (
+              {data.evidenceUrl && !docError && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <a className="tag" href={data.evidenceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
+                  <a
+                    className="tag"
+                    href={data.evidenceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+                  >
                     <ExternalLink size={13} /> Open
                   </a>
-                  <a className="tag g" href={data.evidenceUrl} target="_blank" rel="noreferrer" download style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
+                  <a
+                    className="tag g"
+                    href={data.downloadUrl || `${data.evidenceUrl}&download=1`}
+                    target="_blank"
+                    rel="noreferrer"
+                    download={data.document?.filename || true}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+                  >
                     <Download size={13} /> Download
                   </a>
                 </div>
               )}
             </div>
-            {data.evidenceUrl ? (
-              (data as unknown as { isPdf?: boolean }).isPdf ? (
+
+            {data.evidenceUrl && !docError ? (
+              data.isPdf ? (
                 <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", marginTop: 8 }}>
-                  <iframe title="Fine notice" src={data.evidenceUrl} style={{ width: "100%", height: 560, border: "none" }} />
+                  <iframe
+                    title="Original Challan PDF"
+                    src={data.evidenceUrl}
+                    style={{ width: "100%", height: 560, border: "none" }}
+                    onError={() => setDocError(true)}
+                  />
                 </div>
               ) : (
                 <div style={{ textAlign: "center", marginTop: 8, background: "#f8fafc", padding: 12, borderRadius: 12, border: "1px solid var(--line)", overflow: "auto", minHeight: 280, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -226,30 +281,37 @@ export default function Review() {
                     src={data.evidenceUrl}
                     alt="Original Challan Notice"
                     style={{ maxWidth: "100%", height: "auto", maxHeight: 560, objectFit: "contain", borderRadius: 8, display: "inline-block", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.style.display = "none";
-                      const p = img.parentElement;
-                      if (p && !p.querySelector(".img-error-fallback")) {
-                        const fallback = document.createElement("div");
-                        fallback.className = "img-error-fallback";
-                        fallback.style.padding = "24px 12px";
-                        fallback.style.textAlign = "center";
-                        fallback.innerHTML = `
-                          <div style="font-weight: 600; color: #1e293b; margin-bottom: 6px;">Original Document Available</div>
-                          <div style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Click below to open the original file directly.</div>
-                          <a href="${data.evidenceUrl}" target="_blank" rel="noreferrer" class="btn" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 13px; text-decoration: none;">View Original File</a>
-                        `;
-                        p.appendChild(fallback);
-                      }
-                    }}
+                    onError={() => setDocError(true)}
                   />
                 </div>
               )
             ) : (
-              <div className="card empty" style={{ minHeight: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <b>No Document Attached</b>
-                <span style={{ fontSize: 13, color: "var(--mute)" }}>No notice file was uploaded for this fine.</span>
+              <div className="card empty" style={{ minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", background: "#f8fafc", borderRadius: 12, border: "1px dashed var(--line)" }}>
+                <AlertCircle size={32} style={{ color: docError ? "var(--red)" : "var(--mute)", marginBottom: 8 }} />
+                <b style={{ color: docError ? "#991b1b" : "var(--ink)", marginBottom: 4 }}>
+                  {docError ? "Original Document Unavailable" : "No Document Attached"}
+                </b>
+                <span style={{ fontSize: 13, color: "var(--mute)", maxWidth: 360, marginBottom: 14 }}>
+                  {docError
+                    ? "The original notice file is no longer available in storage. Please upload the original challan again."
+                    : "No notice file was uploaded for this fine."}
+                </span>
+                <label className="btn sm" style={{ cursor: uploadingDoc ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 6, margin: "0 auto" }}>
+                  <Upload size={14} /> {uploadingDoc ? "Uploading…" : "Upload Original Challan"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    style={{ display: "none" }}
+                    disabled={uploadingDoc}
+                    onChange={handleReupload}
+                  />
+                </label>
+              </div>
+            )}
+
+            {data.document && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "var(--mute)" }}>
+                <span>File: <b>{data.document.filename}</b> ({Math.round(data.document.fileSizeBytes / 1024)} KB)</span>
               </div>
             )}
             <div style={{ marginTop: 10, padding: 8, background: "#f8fafc", borderRadius: 8, fontSize: 13 }}>

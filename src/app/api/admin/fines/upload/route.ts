@@ -16,7 +16,13 @@ export async function POST(req: Request) {
     const data = Buffer.from(await f.arrayBuffer());
     if (data.length === 0 || data.length > MAX) throw new AuthError("VALIDATION", 422, "The file must be between 1 byte and 15 MB.");
     const kind = sniff(data); if (!kind) throw new AuthError("VALIDATION", 422, "Unsupported file. Use a JPEG, PNG, WebP or PDF.");
-    const d = fineDeps(); const r = await ingest(d, { data, ext: kind.ext, mime: kind.mime });
+    const d = fineDeps(); const r = await ingest(d, {
+      data,
+      ext: kind.ext,
+      mime: kind.mime,
+      originalFilename: f.name || `challan.${kind.ext}`,
+      uploadedBy: a.adminId,
+    });
     try {
       await runOcrJob(d, r.jobId);
     } catch (ocrErr) {
