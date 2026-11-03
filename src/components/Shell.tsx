@@ -2,6 +2,7 @@
 import Nav from "./Nav";
 import { LogOut } from "lucide-react";
 import { api } from "@/lib/client";
+import AppBrandWatermark from "./AppBrandWatermark";
 
 export default function Shell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   async function logout() {
@@ -11,6 +12,7 @@ export default function Shell({ title, subtitle, children }: { title: string; su
 
   return (
     <div className="app">
+      <AppBrandWatermark />
       <header className="hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
           <h1>{title}</h1>

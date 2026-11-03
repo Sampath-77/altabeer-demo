@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Users, Car, Building2, ScanSearch, RefreshCw, ScrollText, BarChart3, LogOut, ClipboardList, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/client";
+import AppBrandWatermark from "./AppBrandWatermark";
 
 const items = [
   ["/admin", "Overview", LayoutDashboard],
@@ -35,6 +36,7 @@ export default function AdminShell({ title, sub, children }: { title: string; su
   if (!ok) return <div className="adm"><div className="content">Checking access…</div></div>;
   return (
     <div className="adm">
+      <AppBrandWatermark />
       <aside>
         <div style={{ padding: "0 8px 12px" }}>
           <h1 style={{ fontSize: 18, margin: "0 0 4px" }}>Al Tabeer Admin</h1>

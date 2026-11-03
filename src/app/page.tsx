@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, Globe, CheckCircle2, Camera, AlertTriangle, FileText, ClipboardList, AlertCircle, LogOut } from "lucide-react";
 import Nav from "@/components/Nav";
 import ShiftToggle from "@/components/ShiftToggle";
+import AppBrandWatermark from "@/components/AppBrandWatermark";
 import { useApi, fmtTime, fmtDuration, api } from "@/lib/client";
 
 type NA = { available: false; reason: string };
@@ -58,6 +59,7 @@ export default function Home() {
 
   return (
     <div className="app">
+      <AppBrandWatermark />
       <header className="hdr">
         <div className="top">
           <div className="avatar" aria-hidden>{first ? initials(first) : "…"}</div>
