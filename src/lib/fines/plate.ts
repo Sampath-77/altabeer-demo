@@ -1,6 +1,11 @@
 import type { OdooVehicle } from "../odoo/types";
 
-const EMIRATES: [string, string][] = [["ABU DHABI", "ABU DHABI"], ["ABUDHABI", "ABU DHABI"], ["DUBAI", "DUBAI"], ["SHARJAH", "SHARJAH"], ["AJMAN", "AJMAN"], ["UMM AL QUWAIN", "UAQ"], ["UAQ", "UAQ"], ["RAS AL KHAIMAH", "RAK"], ["RAK", "RAK"], ["FUJAIRAH", "FUJAIRAH"]];
+const EMIRATES: [string, string][] = [
+  ["ABU DHABI", "ABU DHABI"], ["ABUDHABI", "ABU DHABI"],
+  ["DUBAI", "DUBAI"], ["DUBRI", "DUBAI"], ["DUBAL", "DUBAI"], ["DUBA1", "DUBAI"], ["DUBI", "DUBAI"],
+  ["SHARJAH", "SHARJAH"], ["AJMAN", "AJMAN"], ["UMM AL QUWAIN", "UAQ"], ["UAQ", "UAQ"],
+  ["RAS AL KHAIMAH", "RAK"], ["RAK", "RAK"], ["FUJAIRAH", "FUJAIRAH"]
+];
 export interface PlateParts { emirate?: string; code?: string; number?: string }
 
 /** Splits "Dubai A 4827", "A-4827", "A4827" into parts. Numeric codes (Abu Dhabi) need a separator: "12 34567". */

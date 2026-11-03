@@ -41,6 +41,43 @@ describe("parsing", () => {
     expect(extractFine("AED 100\nAED 250").warnings).toContain("AMOUNT_AMBIGUOUS");
     expect(extractFine("Fine Amount: AED 1,250.50").amount?.value).toBe(1250.5);
   });
+  it("extracts Abu Dhabi DoT / Toll challan format with textual date and multi-line fields", () => {
+    const notice = `LEXUS GS 430, 2005,
+White
+DUBRI
+38916
+Date and Time of Issuing
+25 Sep 2026, 5:03 pm
+The Fine:
+Location:
+Source:
+Department of Transportation Abu
+Dhabi
+AED 75
+Amount:
+Payable Black Points:
+Online declaration:
+Fine Number:
+NO
+8403883348
+Details:
+مخالفة بوابات التعرفة المرورية - مركبة غير مسجية
+Registration Fine
+Dispute:
+Please contact Department of Transportation Abu Dhabi
+for details about disputing your fine.`;
+    const x = extractFine(notice);
+    expect(x.fineReference?.value).toBe("8403883348");
+    expect(x.plateRaw?.value).toBe("DUBRI 38916");
+    expect(x.plateEmirate?.value).toBe("DUBAI");
+    expect(x.vehicleMakeModel?.value).toBe("LEXUS GS 430, 2005");
+    expect(x.vehicleColour?.value).toBe("White");
+    expect(x.amount?.value).toBe(75);
+    expect(x.currency?.value).toBe("AED");
+    expect(x.issuingAuthority?.value).toBe("Department of Transportation Abu Dhabi");
+    expect(x.violationAt?.value).toBe("2026-09-25T13:03:00.000Z");
+    expect(x.violationCategory?.value).toBe("Toll / Darb Violation");
+  });
 });
 
 const veh = (id: number, plate: string, vendorId?: number) => ({ id, plate, vendorId, active: true });

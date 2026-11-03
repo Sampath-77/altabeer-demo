@@ -56,6 +56,10 @@ export async function submitExpense(d: { odoo: OdooClient; repo: SubRepo; storag
       const f: ReceiptFile = { name: `receipt-${id}.${k.ext}`, mime: k.mime, data };
       await d.odoo.attachReceipt(id, f); await d.repo.markAttached(rec.id);
     }
-  } catch (e) { if (e instanceof AuthError) throw e; throw odooErr(); }
+  } catch (e) {
+    console.error("submitExpense error:", e);
+    if (e instanceof AuthError) throw e;
+    throw odooErr();
+  }
   return { id, status };
 }

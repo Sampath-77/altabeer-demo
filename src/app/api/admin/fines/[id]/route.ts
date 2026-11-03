@@ -22,6 +22,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const job = f.ocrJobs[0] ?? null;
     return Response.json({ fine: { ...f, ocrJobs: undefined }, job: job && { id: job.id, status: job.status, provider: job.provider, confidence: job.confidence, errors: job.errors, rawText: job.rawText, fields: job.fields },
       fromErp: { vehicle: vehicle ? { plate: vehicle.plate, model: vehicle.model, active: vehicle.active, status: vehicle.vehicleStatus, vendorName: vehicle.vendorName } : null, driver: emp[0] ?? null, driverAtViolation: emp[0] ?? null, currentDriver: currentDriverName ? { id: vehicle?.currentDriverId, name: currentDriverName } : null, vendor: ven[0] ?? (vehicle?.vendorName ? { id: vehicle.vendorId, name: vehicle.vendorName } : null) },
-      reasons: f.reviewReasons.map((r: string) => ({ code: r, message: REASON_LABELS[r as keyof typeof REASON_LABELS] ?? r })), evidenceUrl: f.evidenceKeys[0] ? `/api/admin/fines/${f.id}/evidence` : null });
+      reasons: f.reviewReasons.map((r: string) => ({ code: r, message: REASON_LABELS[r as keyof typeof REASON_LABELS] ?? r })),
+      evidenceUrl: f.evidenceKeys[0] ? `/api/admin/fines/${f.id}/evidence` : null,
+      isPdf: f.evidenceKeys[0]?.toLowerCase().endsWith(".pdf") ?? false });
   } catch (e) { return errorResponse(e); }
 }

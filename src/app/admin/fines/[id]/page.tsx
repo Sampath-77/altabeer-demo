@@ -210,7 +210,14 @@ export default function Review() {
               )}
             </div>
             {data.evidenceUrl && (
-              <iframe title="Fine notice" src={data.evidenceUrl} sandbox="" style={{ width: "100%", height: 560, border: "1px solid var(--line)", borderRadius: 12, marginTop: 8 }} />
+              (data as unknown as { isPdf?: boolean }).isPdf ? (
+                <iframe title="Fine notice" src={data.evidenceUrl} style={{ width: "100%", height: 560, border: "1px solid var(--line)", borderRadius: 12, marginTop: 8 }} />
+              ) : (
+                <div style={{ textAlign: "center", marginTop: 8, background: "#f8fafc", padding: 12, borderRadius: 12, border: "1px solid var(--line)", overflow: "auto", maxHeight: 600 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={data.evidenceUrl} alt="Original Challan Notice" style={{ maxWidth: "100%", height: "auto", maxHeight: 560, objectFit: "contain", borderRadius: 8, display: "inline-block", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
+                </div>
+              )
             )}
             <div style={{ marginTop: 10, padding: 8, background: "#f8fafc", borderRadius: 8, fontSize: 13 }}>
               <div><b>OCR Provider:</b> {data.job?.provider ?? "OCR.Space / Tesseract"}</div>

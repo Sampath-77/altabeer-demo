@@ -141,14 +141,50 @@ export function createJson2Client(base: string, db: string, apiKey: string, time
     async createExpense({ employeeId, category, amount, vendor, date }) {
       const product = products[category];
       if (!product) throw new OdooError(`ODOO_PRODUCT_${category.toUpperCase()} is not configured`);
-      const [id] = await call<number[]>(ODOO_MAP.expense.model, "create", { vals_list: [{ name: `${category === "fuel" ? "Fuel" : "Parking"}: ${vendor}`, employee_id: employeeId, product_id: product, total_amount: amount, date }] });
+      const [id] = await call<number[]>(ODOO_MAP.expense.model, "create", {
+        vals_list: [{
+          name: `${category === "fuel" ? "Fuel" : "Parking"}: ${vendor}`,
+          employee_id: employeeId,
+          product_id: product,
+          total_amount: amount,
+          quantity: 1,
+          payment_mode: "own_account",
+          date,
+        }],
+      });
       return (await exp([["id", "=", id]], { limit: 1 }))[0];
     },
     async attachReceipt(expenseId, file) {
       try {
-        await call("ir.attachment", "create", { vals_list: [{ name: file.name, raw: file.data.toString("base64"), res_model: ODOO_MAP.expense.model, res_id: expenseId, mimetype: file.mime }] });
+        await call("ir.attachment", "create", {
+          vals_list: [{
+            name: file.name,
+            raw: file.data.toString("base64"),
+            res_model: ODOO_MAP.expense.model,
+            res_id: expenseId,
+          }],
+        });
       } catch {
-        await call("ir.attachment", "create", { vals_list: [{ name: file.name, datas: file.data.toString("base64"), res_model: ODOO_MAP.expense.model, res_id: expenseId, mimetype: file.mime }] });
+        try {
+          await call("ir.attachment", "create", {
+            vals_list: [{
+              name: file.name,
+              datas: file.data.toString("base64"),
+              res_model: ODOO_MAP.expense.model,
+              res_id: expenseId,
+            }],
+          });
+        } catch {
+          await call("ir.attachment", "create", {
+            vals_list: [{
+              name: file.name,
+              raw: file.data.toString("base64"),
+              res_model: ODOO_MAP.expense.model,
+              res_id: expenseId,
+              mimetype: file.mime,
+            }],
+          });
+        }
       }
     },
     async listExpenses(employeeId, { since, limit }) {

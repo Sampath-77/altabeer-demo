@@ -11,6 +11,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const f = await prisma.fine.findUnique({ where: { id: params.id }, select: { evidenceKeys: true } });
     const key = f?.evidenceKeys[0]; if (!key) throw new AuthError("NOT_FOUND", 404, "No evidence file.");
     const data = await localStorage_().get(key);
-    return new Response(new Uint8Array(data), { headers: { "Content-Type": TYPES[key.split(".").pop()!] ?? "application/octet-stream", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store", "Content-Security-Policy": "sandbox" } });
+    return new Response(new Uint8Array(data), { headers: { "Content-Type": TYPES[key.split(".").pop()!] ?? "application/octet-stream", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store" } });
   } catch (e) { return errorResponse(e); }
 }

@@ -103,7 +103,7 @@ export async function runOcrJob(d: Deps, jobId: string): Promise<void> {
 
   const v = <T,>(x?: { value: T }) => x?.value ?? null;
   const base: Partial<FineRec> = {
-    fineReference: v(extracted.fineReference), issuingAuthority: v(extracted.authority), plateRaw: v(extracted.plateRaw), plateEmirate: v(extracted.plateEmirate), plateCode: v(extracted.plateCode),
+    fineReference: v(extracted.fineReference), issuingAuthority: v(extracted.issuingAuthority) ?? v(extracted.authority), plateRaw: v(extracted.plateRaw), plateEmirate: v(extracted.plateEmirate), plateCode: v(extracted.plateCode),
     amount: v(extracted.amount), additionalPenalty: v(extracted.additionalPenalty), violationAt: extracted.violationAt ? new Date(extracted.violationAt.value) : null,
     deadline: extracted.deadline ? new Date(extracted.deadline.value) : null, deadlineSource: extracted.deadline ? "notice" : null, description: v(extracted.description), vehicleMakeModel: v(extracted.vehicleMakeModel),
   };
