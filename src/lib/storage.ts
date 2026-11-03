@@ -5,33 +5,34 @@ import { randomUUID } from "crypto";
 
 export interface Storage { put(data: Buffer, ext: string): Promise<string>; get(key: string): Promise<Buffer> }
 
-// Process-level in-memory cache to guarantee instant retrieval in serverless / ephemeral environments
+// Process-level in-memory cache to guarantee instant retrieval across requests
 const memCache = new Map<string, Buffer>();
 
-function resolveStorageDir(): string {
-  if (process.env.STORAGE_PATH) return process.env.STORAGE_PATH;
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === "production") {
-    return path.join(os.tmpdir(), "al-tabeer-storage");
-  }
-  return "./.storage";
+function getCandidateDirs(root?: string): string[] {
+  const dirs = new Set<string>();
+  if (root) dirs.add(path.resolve(root));
+  if (process.env.STORAGE_PATH) dirs.add(path.resolve(process.env.STORAGE_PATH));
+  dirs.add(path.resolve(process.cwd(), ".storage"));
+  dirs.add(path.resolve(process.cwd(), "al-tabeer", ".storage"));
+  dirs.add(path.resolve(process.cwd(), "..", ".storage"));
+  dirs.add(path.resolve(process.cwd(), "..", "al-tabeer", ".storage"));
+  dirs.add(path.join(os.tmpdir(), "al-tabeer-storage"));
+  dirs.add(path.join(os.tmpdir(), ".storage"));
+  return [...dirs];
 }
 
-/** Private local storage (dev / single server / serverless). */
-export const localStorage_ = (root = resolveStorageDir()): Storage => ({
+/** Robust storage adapter with multi-directory discovery and process memory cache. */
+export const localStorage_ = (root = (process.env.STORAGE_PATH || "./.storage")): Storage => ({
   async put(data, ext) {
     const key = `${randomUUID()}.${ext}`;
     memCache.set(key, data);
-    try {
-      await fs.mkdir(root, { recursive: true });
-      await fs.writeFile(path.join(root, key), data);
-    } catch {
-      // Fallback to os.tmpdir() if root path is read-only (standard on serverless platforms like Vercel)
+    const candidateDirs = getCandidateDirs(root);
+    for (const dir of candidateDirs) {
       try {
-        const fallback = path.join(os.tmpdir(), "al-tabeer-storage");
-        await fs.mkdir(fallback, { recursive: true });
-        await fs.writeFile(path.join(fallback, key), data);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(path.join(dir, key), data);
       } catch {
-        // In-memory fallback if disk is completely unavailable
+        // fail-soft for candidate paths that may not be writable
       }
     }
     return key;
@@ -39,11 +40,19 @@ export const localStorage_ = (root = resolveStorageDir()): Storage => ({
   async get(key) {
     if (!/^[\w-]+\.\w+$/.test(key)) throw new Error("bad key");
     if (memCache.has(key)) return memCache.get(key)!;
-    try {
-      return await fs.readFile(path.join(root, key));
-    } catch {
-      const fallback = path.join(os.tmpdir(), "al-tabeer-storage");
-      return await fs.readFile(path.join(fallback, key));
+    const candidateDirs = getCandidateDirs(root);
+    for (const dir of candidateDirs) {
+      try {
+        const fullPath = path.join(dir, key);
+        const buf = await fs.readFile(fullPath);
+        if (buf && buf.length > 0) {
+          memCache.set(key, buf);
+          return buf;
+        }
+      } catch {
+        // try next candidate
+      }
     }
+    throw new Error(`File ${key} not found in any storage directory`);
   },
 });

@@ -201,23 +201,56 @@ export default function Review() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 16, alignItems: "start" }}>
           {/* SECTION 7: ORIGINAL CHALLAN DOCUMENT */}
           <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <b>Section 7 — Original Challan Document</b>
               {data.evidenceUrl && (
-                <a className="tag g" href={data.evidenceUrl} target="_blank" rel="noreferrer" download style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Download size={13} /> Download
-                </a>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <a className="tag" href={data.evidenceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
+                    <ExternalLink size={13} /> Open
+                  </a>
+                  <a className="tag g" href={data.evidenceUrl} target="_blank" rel="noreferrer" download style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
+                    <Download size={13} /> Download
+                  </a>
+                </div>
               )}
             </div>
-            {data.evidenceUrl && (
+            {data.evidenceUrl ? (
               (data as unknown as { isPdf?: boolean }).isPdf ? (
-                <iframe title="Fine notice" src={data.evidenceUrl} style={{ width: "100%", height: 560, border: "1px solid var(--line)", borderRadius: 12, marginTop: 8 }} />
+                <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", marginTop: 8 }}>
+                  <iframe title="Fine notice" src={data.evidenceUrl} style={{ width: "100%", height: 560, border: "none" }} />
+                </div>
               ) : (
-                <div style={{ textAlign: "center", marginTop: 8, background: "#f8fafc", padding: 12, borderRadius: 12, border: "1px solid var(--line)", overflow: "auto", maxHeight: 600 }}>
+                <div style={{ textAlign: "center", marginTop: 8, background: "#f8fafc", padding: 12, borderRadius: 12, border: "1px solid var(--line)", overflow: "auto", minHeight: 280, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={data.evidenceUrl} alt="Original Challan Notice" style={{ maxWidth: "100%", height: "auto", maxHeight: 560, objectFit: "contain", borderRadius: 8, display: "inline-block", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
+                  <img
+                    src={data.evidenceUrl}
+                    alt="Original Challan Notice"
+                    style={{ maxWidth: "100%", height: "auto", maxHeight: 560, objectFit: "contain", borderRadius: 8, display: "inline-block", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.style.display = "none";
+                      const p = img.parentElement;
+                      if (p && !p.querySelector(".img-error-fallback")) {
+                        const fallback = document.createElement("div");
+                        fallback.className = "img-error-fallback";
+                        fallback.style.padding = "24px 12px";
+                        fallback.style.textAlign = "center";
+                        fallback.innerHTML = `
+                          <div style="font-weight: 600; color: #1e293b; margin-bottom: 6px;">Original Document Available</div>
+                          <div style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Click below to open the original file directly.</div>
+                          <a href="${data.evidenceUrl}" target="_blank" rel="noreferrer" class="btn" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 13px; text-decoration: none;">View Original File</a>
+                        `;
+                        p.appendChild(fallback);
+                      }
+                    }}
+                  />
                 </div>
               )
+            ) : (
+              <div className="card empty" style={{ minHeight: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <b>No Document Attached</b>
+                <span style={{ fontSize: 13, color: "var(--mute)" }}>No notice file was uploaded for this fine.</span>
+              </div>
             )}
             <div style={{ marginTop: 10, padding: 8, background: "#f8fafc", borderRadius: 8, fontSize: 13 }}>
               <div><b>OCR Provider:</b> {data.job?.provider ?? "OCR.Space / Tesseract"}</div>
