@@ -134,7 +134,7 @@ describe("Driver Daily Report Validation", () => {
     ).rejects.toThrow("confirm the no-violation declaration");
   });
 
-  it("requires category, description and explanation for VIOLATION", async () => {
+  it("requires category for VIOLATION and allows simplified submission without description or explanation", async () => {
     const now = Date.UTC(2026, 9, 30, 8, 0, 0);
     // Missing category
     await expect(
@@ -147,35 +147,6 @@ describe("Driver Daily Report Validation", () => {
         now,
       ),
     ).rejects.toThrow("category is required");
-
-    // Missing description
-    await expect(
-      submitDailyReport(
-        "user-1",
-        6,
-        { reportingDate: "2026-10-30", reportType: "VIOLATION", violationCategory: "SPEEDING" },
-        [],
-        storage,
-        now,
-      ),
-    ).rejects.toThrow("description is required");
-
-    // Missing explanation
-    await expect(
-      submitDailyReport(
-        "user-1",
-        6,
-        {
-          reportingDate: "2026-10-30",
-          reportType: "VIOLATION",
-          violationCategory: "SPEEDING",
-          violationDescription: "Exceeded limit by 15 km/h",
-        },
-        [],
-        storage,
-        now,
-      ),
-    ).rejects.toThrow("explanation is required");
   });
 
   it("rejects files larger than 8 MB or invalid file types", async () => {

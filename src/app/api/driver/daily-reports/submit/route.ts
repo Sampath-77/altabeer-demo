@@ -1,6 +1,8 @@
 import { driverContext } from "@/lib/driver";
 import { errorResponse } from "@/lib/auth/guard";
 import { submitDailyReport } from "@/lib/compliance/service";
+import { complianceFlagRepo } from "@/lib/compliance/repo-prisma";
+import { dubaiDate } from "@/lib/compliance/schedule";
 import { localStorage_ } from "@/lib/storage";
 import { AuthError } from "@/lib/auth/service";
 import { allow } from "@/lib/ratelimit";
@@ -59,19 +61,31 @@ export async function POST(req: Request) {
       }
     } catch { /* Odoo unavailable — proceed without vehicle snapshot */ }
 
+    // Trusted server-side reporting date determination
+    const serverToday = dubaiDate(Date.now());
+    let trustedDate = serverToday;
+    if (fields.reportingDate && fields.reportingDate !== serverToday) {
+      const activeFlag = await complianceFlagRepo.findActiveForDriver(d.userId);
+      if (activeFlag && activeFlag.reportingDate === fields.reportingDate) {
+        trustedDate = activeFlag.reportingDate;
+      } else {
+        throw new AuthError("VALIDATION", 422, "You can only submit for today's reporting date or your active pending report date.");
+      }
+    }
+
     const report = await submitDailyReport(
       d.userId,
       d.employeeId,
       {
-        reportingDate: fields.reportingDate,
+        reportingDate: trustedDate,
         reportType,
         violationCategory: fields.violationCategory as ViolationCategory | undefined,
-        violationDescription: fields.violationDescription,
-        violationLocation: fields.violationLocation,
-        violationDatetime: fields.violationDatetime,
-        fineReference: fields.fineReference,
+        violationDescription: fields.violationDescription || undefined,
+        violationLocation: fields.violationLocation || undefined,
+        violationDatetime: fields.violationDatetime || undefined,
+        fineReference: fields.fineReference || undefined,
         reportedFineAmount: fields.reportedFineAmount ? Number(fields.reportedFineAmount) : undefined,
-        driverExplanation: fields.driverExplanation,
+        driverExplanation: fields.driverExplanation || undefined,
         declarationConfirmed: fields.declarationConfirmed === "true" || fields.declarationConfirmed === "1",
         vehicleOdooId,
         vehiclePlateSnapshot,

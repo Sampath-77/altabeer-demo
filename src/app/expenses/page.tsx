@@ -45,7 +45,7 @@ export default function Expenses() {
     <Shell title="Submit Expense" subtitle="Upload fuel and parking receipts for reimbursement">
       <div className="qa" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 14 }} role="tablist">
         {(["fuel", "parking"] as const).map(c => (
-          <button key={c} role="tab" aria-selected={cat === c} onClick={() => setCat(c)} className="btn" style={{ background: cat === c ? "var(--orange)" : "#f3f4f6", color: cat === c ? "#fff" : "var(--mute)", boxShadow: "none", display: "flex", gap: 8, justifyContent: "center" }}>
+          <button key={c} role="tab" aria-selected={cat === c} onClick={() => { setCat(c); setErr(null); setDone(false); }} className="btn" style={{ background: cat === c ? "var(--orange)" : "#f3f4f6", color: cat === c ? "#fff" : "var(--mute)", boxShadow: "none", display: "flex", gap: 8, justifyContent: "center" }}>
             {c === "fuel" ? <Fuel size={18} /> : <CircleParking size={18} />}{c === "fuel" ? "Fuel" : "Parking"}
           </button>
         ))}

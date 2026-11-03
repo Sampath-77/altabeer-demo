@@ -29,10 +29,23 @@ export default function Home() {
   const { data, error, loading, reload } = useApi<Dash>("/api/driver/dashboard");
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => setNow(new Date()), []);
+  useEffect(() => {
+    setNow(new Date());
+    const tick = () => setNow(new Date());
+    const timer = setInterval(tick, 10_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
   const hr = now ? Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", hour12: false }).format(now)) : 12;
   const greet = hr < 12 ? "Good Morning" : hr < 18 ? "Good Afternoon" : "Good Evening";
-  const date = now ? new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", weekday: "long", day: "numeric", month: "short", year: "numeric" }).format(now) : "";
+  const date = now ? new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now) : "";
+  const time = now ? new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", hour12: true }).format(now) : "";
   const open = data?.shift?.open ?? false;
   const first = data?.driver?.name ?? "";
   const compliance = data?.compliance ?? null;
@@ -48,7 +61,13 @@ export default function Home() {
       <header className="hdr">
         <div className="top">
           <div className="avatar" aria-hidden>{first ? initials(first) : "…"}</div>
-          <div className="who"><small>{date}</small><strong>{greet}{first ? `, ${first}` : ""}</strong></div>
+          <div className="who">
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+              <small>{date}</small>
+              {time && <span style={{ color: "var(--orange, #f97316)", fontWeight: 700, fontSize: 12, letterSpacing: "0.3px" }}>• {time}</span>}
+            </div>
+            <strong>{greet}{first ? `, ${first}` : ""}</strong>
+          </div>
           <button className="pill" aria-label="Language: English"><Globe size={14} /> EN</button>
           <Link href="/notifications" className="icon-btn" aria-label={`Notifications${data?.unreadNotifications ? `, ${data.unreadNotifications} unread` : ""}`} style={{ position: "relative" }}><Bell size={20} />{!!data?.unreadNotifications && <span style={{ position: "absolute", top: 6, right: 6, width: 10, height: 10, borderRadius: 5, background: "var(--orange)" }} />}</Link>
           <button onClick={logout} className="icon-btn" aria-label="Sign out" title="Sign out"><LogOut size={18} /></button>

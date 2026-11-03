@@ -72,8 +72,6 @@ export async function submitDailyReport(
   // Validate report type specific fields
   if (input.reportType === "VIOLATION") {
     if (!input.violationCategory) throw new AuthError("VALIDATION", 422, "Violation category is required.");
-    if (!input.violationDescription?.trim()) throw new AuthError("VALIDATION", 422, "Violation description is required.");
-    if (!input.driverExplanation?.trim()) throw new AuthError("VALIDATION", 422, "Driver explanation is required.");
   }
   if (input.reportType === "NO_VIOLATION" && !input.declarationConfirmed) {
     throw new AuthError("VALIDATION", 422, "You must confirm the no-violation declaration before submitting.");

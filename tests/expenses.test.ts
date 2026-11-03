@@ -32,6 +32,14 @@ describe("expense submission", () => {
     expect(odoo.expenses).toHaveLength(1); expect(odoo.attachments).toHaveLength(1);
     expect(odoo.expenses[0]).toMatchObject({ amount: 85.5, category: "fuel", vendor: "ENOC Al Quoz", date: "2026-10-29" });
   });
+  it("creates a parking expense correctly classified as parking", async () => {
+    const { odoo, deps } = env();
+    const parkingData = { category: "parking", amount: "20.00", vendor: "Dubai Parking" };
+    const r = await submitExpense(deps(), "key-parking-1", parkingData, JPEG);
+    expect(r.status).toBe("submitted");
+    expect(odoo.expenses).toHaveLength(1);
+    expect(odoo.expenses[0]).toMatchObject({ amount: 20.0, category: "parking", vendor: "Dubai Parking" });
+  });
   it.each([["", "amount"], ["0", "amount"], ["-5", "amount"], ["abc", "amount"], ["1.234", "amount"]])("rejects amount %s", async (amount) => {
     const { odoo, deps } = env();
     expect(await code(submitExpense(deps(), KEY, { ...ok, amount }, JPEG))).toBe("VALIDATION"); expect(odoo.expenses).toHaveLength(0);

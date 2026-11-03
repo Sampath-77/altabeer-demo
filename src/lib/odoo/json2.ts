@@ -1,4 +1,4 @@
-import type { OdooClient, OdooAttendance, OdooEmployee, OdooVehicle, OdooAssignment, OdooExpense, OdooPayslip, ExpenseStatus, EmployeeQuery, OdooVendor, OdooFineSnapshot, OdooFineRecord } from "./types";
+import type { OdooClient, OdooAttendance, OdooEmployee, OdooVehicle, OdooAssignment, OdooExpense, OdooPayslip, ExpenseStatus, ExpenseCategory, EmployeeQuery, OdooVendor, OdooFineSnapshot, OdooFineRecord } from "./types";
 
 /**
  * Odoo External JSON-2 adapter (POST {base}/json/2/{model}/{method}, Bearer API key).
@@ -63,10 +63,20 @@ export function createJson2Client(base: string, db: string, apiKey: string, time
   const att = (r: Att): OdooAttendance => ({ id: r.id, employeeId: r.employee_id[0], checkIn: fromOdoo(r.check_in)!, checkOut: fromOdoo(r.check_out) });
 
   type Ex = { id: number; employee_id: [number, string]; product_id: [number, string] | false; name: string; total_amount: number; date: string; state: string };
+  const resolveExpenseCategory = (name: string, productId: unknown): ExpenseCategory | "other" => {
+    const n = (name || "").toLowerCase().trim();
+    if (n.startsWith("parking:") || n.startsWith("parking :") || n === "parking") return "parking";
+    if (n.startsWith("fuel:") || n.startsWith("fuel :") || n === "fuel") return "fuel";
+    if (products.parking && products.parking !== products.fuel && rel(productId) === products.parking) return "parking";
+    if (products.fuel && products.parking !== products.fuel && rel(productId) === products.fuel) return "fuel";
+    if (n.includes("parking")) return "parking";
+    if (n.includes("fuel") || n.includes("petrol") || n.includes("diesel") || n.includes("gasoline")) return "fuel";
+    return rel(productId) === products.parking ? "parking" : rel(productId) === products.fuel ? "fuel" : "other";
+  };
   const exp = async (domain: unknown[], extra: Record<string, unknown>): Promise<OdooExpense[]> =>
     (await searchRead<Ex>(ODOO_MAP.expense, domain, extra)).map(r => ({
       id: r.id, employeeId: r.employee_id[0], amount: r.total_amount, date: r.date, vendor: r.name.includes(": ") ? r.name.split(": ").slice(1).join(": ") : r.name,
-      category: rel(r.product_id) === products.fuel ? "fuel" : rel(r.product_id) === products.parking ? "parking" : "other", status: EXP_STATE[r.state] ?? "unknown" }));
+      category: resolveExpenseCategory(r.name, r.product_id), status: EXP_STATE[r.state] ?? "unknown" }));
   type Ps = { id: number; employee_id: [number, string]; name: string; date_from: string; date_to: string; state: string; net_wage: number | false };
   const pay = async (domain: unknown[], extra: Record<string, unknown>): Promise<OdooPayslip[]> => {
     const slips = await searchRead<Ps>(ODOO_MAP.payslip, domain, extra);

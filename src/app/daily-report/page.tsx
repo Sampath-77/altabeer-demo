@@ -1,15 +1,19 @@
 "use client";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Upload, X, AlertTriangle, Clipboard } from "lucide-react";
 import Shell from "@/components/Shell";
-import { api, useApi, fmtDateTime } from "@/lib/client";
+import { useApi, fmtDateTime } from "@/lib/client";
 
 const CATEGORIES = [
-  ["SPEEDING", "Speeding"], ["PARKING_VIOLATION", "Parking Violation"],
-  ["RED_LIGHT_VIOLATION", "Red-Light Violation"], ["WRONG_PARKING", "Wrong Parking"],
-  ["LANE_VIOLATION", "Lane Violation"], ["VEHICLE_ACCIDENT", "Vehicle Accident"],
-  ["VEHICLE_DAMAGE", "Vehicle Damage"], ["VEHICLE_INCIDENT", "Vehicle-Related Incident"],
+  ["SPEEDING", "Speeding"],
+  ["PARKING_VIOLATION", "Parking Violation"],
+  ["RED_LIGHT_VIOLATION", "Red-Light Violation"],
+  ["WRONG_PARKING", "Wrong Parking"],
+  ["LANE_VIOLATION", "Lane Violation"],
+  ["VEHICLE_ACCIDENT", "Vehicle Accident"],
+  ["VEHICLE_DAMAGE", "Vehicle Damage"],
+  ["VEHICLE_INCIDENT", "Vehicle-Related Incident"],
   ["OTHER", "Other"],
 ] as const;
 
@@ -20,24 +24,20 @@ function dubaiDateStr(offsetDays = 0) {
   const d = new Date(Date.now() + 4 * 3600_000 - offsetDays * 86400_000);
   return d.toISOString().slice(0, 10);
 }
+
 function fmtDateLabel(d: string) {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "long", year: "numeric" }).format(new Date(d + "T00:00:00+04:00"));
 }
 
 function DailyReportForm() {
   const searchParams = useSearchParams();
-  const prefillDate = searchParams.get("date") ?? dubaiDateStr();
+  const today = dubaiDateStr();
+  const prefillDate = searchParams.get("date") ?? today;
 
   const [reportType, setReportType] = useState<"VIOLATION" | "NO_VIOLATION" | null>(null);
-  const [date, setDate] = useState(prefillDate);
+  const [date] = useState(prefillDate);
   const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [violationDate, setViolationDate] = useState("");
-  const [violationTime, setViolationTime] = useState("");
-  const [fineRef, setFineRef] = useState("");
-  const [fineAmount, setFineAmount] = useState("");
-  const [explanation, setExplanation] = useState("");
   const [declared, setDeclared] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -49,17 +49,12 @@ function DailyReportForm() {
   const plate = dash?.assignment?.plate;
   const model = dash?.assignment?.model;
 
-  const today = dubaiDateStr();
-  const yesterday = dubaiDateStr(1);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!reportType) { setError("Select a report type."); return; }
     if (reportType === "VIOLATION") {
       if (!category) { setError("Select a violation category."); return; }
-      if (!description.trim()) { setError("Describe the violation or incident."); return; }
-      if (!explanation.trim()) { setError("Provide your explanation."); return; }
     }
     if (reportType === "NO_VIOLATION" && !declared) { setError("Confirm the declaration before submitting."); return; }
     setBusy(true);
@@ -69,12 +64,7 @@ function DailyReportForm() {
       form.append("reportType", reportType);
       if (reportType === "VIOLATION") {
         form.append("violationCategory", category);
-        form.append("violationDescription", description);
-        form.append("violationLocation", location);
-        if (violationDate) form.append("violationDatetime", `${violationDate}T${violationTime || "00:00"}:00+04:00`);
-        form.append("fineReference", fineRef);
-        if (fineAmount) form.append("reportedFineAmount", fineAmount);
-        form.append("driverExplanation", explanation);
+        if (location.trim()) form.append("violationLocation", location.trim());
       }
       form.append("declarationConfirmed", declared ? "true" : "false");
       for (const f of files) form.append("file", f);
@@ -113,21 +103,23 @@ function DailyReportForm() {
     );
   }
 
+  const isToday = date === today;
+  const dateDisplay = isToday ? `Today — ${fmtDateLabel(today)}` : `${fmtDateLabel(date)} (Pending report)`;
+
   return (
     <Shell title="Daily Violation Report" subtitle="Mandatory daily compliance — submit by end of working day">
       {error && <div className="err" role="alert">{error}</div>}
       <form onSubmit={handleSubmit}>
-        {/* Date selector */}
+        {/* Reporting Date (Automatic, Read-only, No dropdown) */}
         <div className="form-section">
           <h3>Reporting Date</h3>
           <div className="field">
-            <select value={date} onChange={e => setDate(e.target.value)} disabled={!!searchParams.get("date")}>
-              <option value={today}>Today — {fmtDateLabel(today)}</option>
-              <option value={yesterday}>Yesterday — {fmtDateLabel(yesterday)}</option>
-            </select>
-            {searchParams.get("date") && date !== today && date !== yesterday && (
-              <p style={{ fontSize: 12, color: "var(--mute)", margin: "6px 0 0" }}>Reporting for {fmtDateLabel(date)} (pending report)</p>
-            )}
+            <input
+              type="text"
+              readOnly
+              value={dateDisplay}
+              style={{ background: "#f8fafc", cursor: "default", fontWeight: 600, color: "var(--navy)" }}
+            />
           </div>
         </div>
 
@@ -163,7 +155,7 @@ function DailyReportForm() {
           </div>
         </div>
 
-        {/* Violation form */}
+        {/* Simplified Violation Details */}
         {reportType === "VIOLATION" && (
           <>
             <div className="form-section">
@@ -176,39 +168,14 @@ function DailyReportForm() {
                 </select>
               </div>
               <div className="field">
-                <label>Description <span style={{ color: "var(--red)" }}>*</span></label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what happened in detail…" maxLength={1000} required />
-              </div>
-              <div className="field">
                 <label>Location (optional)</label>
-                <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g., Sheikh Zayed Road, Al Quoz" maxLength={200} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div className="field">
-                  <label>Violation Date</label>
-                  <input type="date" value={violationDate} onChange={e => setViolationDate(e.target.value)} max={today} />
-                </div>
-                <div className="field">
-                  <label>Violation Time</label>
-                  <input type="time" value={violationTime} onChange={e => setViolationTime(e.target.value)} />
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div className="field">
-                  <label>Fine Reference No. (optional)</label>
-                  <input type="text" value={fineRef} onChange={e => setFineRef(e.target.value)} placeholder="e.g., TF-2026-XXXXX" maxLength={60} />
-                </div>
-                <div className="field">
-                  <label>Fine Amount AED (optional)</label>
-                  <input type="number" value={fineAmount} onChange={e => setFineAmount(e.target.value)} placeholder="0.00" min={0} max={100000} step={0.01} />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-section">
-              <h3>Your Explanation <span style={{ color: "var(--red)" }}>*</span></h3>
-              <div className="field">
-                <textarea value={explanation} onChange={e => setExplanation(e.target.value)} placeholder="Explain the circumstances in your own words…" maxLength={1000} required />
+                <input
+                  type="text"
+                  value={location}
+                  onChange={e => setLocation(e.target.value)}
+                  placeholder="Enter incident location (e.g. Sheikh Zayed Road)"
+                  maxLength={200}
+                />
               </div>
             </div>
 
@@ -266,4 +233,3 @@ export default function DailyReportPage() {
     </Suspense>
   );
 }
-
