@@ -41,6 +41,11 @@ export async function GET(req: Request) {
     }
     const notes = [table.note, namesNote, truncated ? `Showing the latest ${MAX} fines only. Narrow the date range.` : null].filter(Boolean).join(" ");
     if (g("format") === "csv") return new Response(R.toCsv({ ...table, note: notes }), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${type}-report-${day}.csv"`, "Cache-Control": "private, no-store" } });
+    if (g("format") === "xlsx") {
+      const { tableToXlsx } = await import("@/lib/reports-excel");
+      const buf = await tableToXlsx({ ...table, note: notes || undefined });
+      return new Response(buf, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="${type}-report-${day}.xlsx"`, "Cache-Control": "private, no-store" } });
+    }
     return Response.json({ ...table, note: notes || undefined, generatedAt: new Date(now).toISOString() });
   } catch (e) { return errorResponse(e); }
 }

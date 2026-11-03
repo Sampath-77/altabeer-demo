@@ -77,6 +77,7 @@ export default function DailyReportsPage() {
           style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "8px 12px", font: "inherit", background: "#fff" }} />
         <button className="tag" onClick={reload} title="Refresh"><RefreshCw size={14} /></button>
         <button className="tag g" onClick={exportCsv} title="Export CSV"><Download size={14} /> CSV</button>
+        <button className="tag g" onClick={() => window.open(`/api/admin/daily-reports/export?date=${date}&format=xlsx`, "_blank")} title="Export Excel"><Download size={14} /> Excel</button>
       </div>
 
       {/* KPI Cards */}

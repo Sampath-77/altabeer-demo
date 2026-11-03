@@ -14,9 +14,20 @@ export async function GET(req: Request) {
     const format = u.searchParams.get("format") ?? "csv";
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new AuthError("VALIDATION", 422, "date must be YYYY-MM-DD.");
-    if (format !== "csv") throw new AuthError("VALIDATION", 422, "Currently only format=csv is supported. XLSX export coming soon.");
+    if (format !== "csv" && format !== "xlsx") throw new AuthError("VALIDATION", 422, "format must be csv or xlsx.");
 
     const rows = await buildDailyReportTable(targetDate, adminContext(req).odoo, nowMs);
+
+    if (format === "xlsx") {
+      const { buildDailyReportXlsx } = await import("@/lib/compliance/excel");
+      const buf = await buildDailyReportXlsx(rows as Parameters<typeof buildDailyReportXlsx>[0], targetDate);
+      return new Response(buf, {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="AlTabeer_Daily_Driver_Reports_${targetDate}.xlsx"`,
+        },
+      });
+    }
 
     const header = [
       "Driver Name", "Driver User ID", "Employee ID", "Vehicle Plate", "Vehicle Model", "Vendor",

@@ -93,7 +93,7 @@ export async function runOcrJob(d: Deps, jobId: string): Promise<void> {
   const job = await d.repo.getJob(jobId); if (!job || job.status !== "QUEUED" || !job.fineId) return;
   await d.repo.updateJob(jobId, { status: "PROCESSING" });
   const fine = (await d.repo.getFine(job.fineId))!;
-  let text = "", confidence: number | undefined, provider: string | undefined, extracted: Extracted = { warnings: [] }, ocrFailed = false, err: string | undefined;
+  let text = "", confidence: number | undefined, provider: string | undefined, extracted: Extracted = { warnings: [], additionalFields: [] }, ocrFailed = false, err: string | undefined;
   try {
     const p = d.ocr(); provider = p.name;
     const data = await d.storage.get(job.sourceKey);

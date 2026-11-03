@@ -20,6 +20,7 @@ export default function Reports() {
         {type === "daily" && <input type="date" aria-label="Day" value={date} max={today()} onChange={e => setDate(e.target.value)} />}
         {ranged && <><input type="date" aria-label="From (date received)" value={from} onChange={e => setFrom(e.target.value)} /><input type="date" aria-label="To (date received)" value={to} onChange={e => setTo(e.target.value)} /></>}
         <a className="btn sm" style={{ display: "inline-block", textAlign: "center" }} href={`/api/admin/reports/fines?${q}&format=csv`}>Download CSV</a>
+        <a className="btn sm" style={{ display: "inline-block", textAlign: "center", background: "var(--navy)" }} href={`/api/admin/reports/fines?${q}&format=xlsx`}>Download Excel (.xlsx)</a>
       </div>
       {error && <div className="err" role="alert">{error}</div>}
       {loading && !data && <div className="card empty">Loading…</div>}

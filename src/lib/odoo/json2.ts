@@ -8,7 +8,7 @@ import type { OdooClient, OdooAttendance, OdooEmployee, OdooVehicle, OdooAssignm
 export const ODOO_MAP = {
   employee: { model: "hr.employee", fields: ["id", "name", "active", "job_title"] },
   attendance: { model: "hr.attendance", fields: ["id", "employee_id", "check_in", "check_out"] },
-  vehicle: { model: "fleet.vehicle", fields: ["id", "license_plate", "model_id", "active"] },
+  vehicle: { model: "fleet.vehicle", fields: ["id", "name", "license_plate", "model_id", "active", "x_studio_vendor", "driver_employee_id", "state_id"] },
   expense: { model: "hr.expense", fields: ["id", "employee_id", "product_id", "name", "total_amount", "date", "state"] },
   payslip: { model: "hr.payslip", fields: ["id", "employee_id", "name", "date_from", "date_to", "state", "net_wage"] },
   payslipLine: { model: "hr.payslip.line", fields: ["id", "slip_id", "name", "code", "total"] },
@@ -88,8 +88,8 @@ export function createJson2Client(base: string, db: string, apiKey: string, time
     if (o.idNotIn?.length) d.push(["id", "not in", o.idNotIn]);
     return d;
   };
-  type Veh = { id: number; license_plate: string; model_id: [number, string] | false; active: boolean; vendor_id?: [number, string] | false };
-  const veh = (v: Veh): OdooVehicle => ({ id: v.id, plate: v.license_plate, model: Array.isArray(v.model_id) ? v.model_id[1] : undefined, active: v.active, vendorId: Array.isArray(v.vendor_id) ? v.vendor_id[0] : undefined });
+  type Veh = { id: number; name?: string; license_plate: string; model_id: [number, string] | false; active: boolean; x_studio_vendor?: [number, string] | false; driver_employee_id?: [number, string] | false; state_id?: [number, string] | false };
+  const veh = (v: Veh): OdooVehicle => ({ id: v.id, plate: v.license_plate, model: Array.isArray(v.model_id) ? v.model_id[1] : undefined, active: v.active, vendorId: Array.isArray(v.x_studio_vendor) ? v.x_studio_vendor[0] : undefined, vendorName: Array.isArray(v.x_studio_vendor) ? v.x_studio_vendor[1] : undefined, currentDriverId: Array.isArray(v.driver_employee_id) ? v.driver_employee_id[0] : undefined, vehicleStatus: Array.isArray(v.state_id) ? v.state_id[1] : undefined });
   type Ven = { id: number; name: string; email: string | false; phone: string | false };
   const ven = (v: Ven): OdooVendor => ({ id: v.id, name: v.name, email: v.email || undefined, phone: v.phone || undefined });
 
@@ -122,9 +122,9 @@ export function createJson2Client(base: string, db: string, apiKey: string, time
         ODOO_MAP.assignment, ["|", ["driver_employee_id", "=", employeeId], ["driver_id", "=", employeeId], ["date_end", "=", false]], { limit: 1, order: "date_start desc" });
       if (!a) return null;
       const vid = rel(a.vehicle_id)!;
-      const [v] = await searchRead<{ id: number; license_plate: string; model_id: [number, string] | false; active: boolean }>(ODOO_MAP.vehicle, [["id", "=", vid]], { limit: 1 });
+      const [v] = await searchRead<Veh>(ODOO_MAP.vehicle, [["id", "=", vid]], { limit: 1 });
       if (!v) return null;
-      const vehicle: OdooVehicle = { id: v.id, plate: v.license_plate, model: Array.isArray(v.model_id) ? v.model_id[1] : undefined, active: v.active };
+      const vehicle: OdooVehicle = veh(v);
       const assignment: OdooAssignment = { vehicleId: vid, employeeId, from: fromOdoo(a.date_start) ?? a.date_start, to: null };
       return { vehicle, assignment };
     },

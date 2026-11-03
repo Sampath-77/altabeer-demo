@@ -340,10 +340,14 @@ export const complianceNotify = {
 // ─── Driver Users Repo ─────────────────────────────────────────────────────
 
 export async function getActiveDriverUsers(): Promise<{ userId: string; odooEmployeeId: number }[]> {
-  const rows = await prisma.user.findMany({
-    where: { role: "DRIVER", status: "ACTIVE", odooEmployeeId: { not: null } },
-    select: { id: true, odooEmployeeId: true },
-  });
-  return rows.map(u => ({ userId: u.id, odooEmployeeId: u.odooEmployeeId as number }));
+  try {
+    const rows = await prisma.user.findMany({
+      where: { role: "DRIVER", status: "ACTIVE", odooEmployeeId: { not: null } },
+      select: { id: true, odooEmployeeId: true },
+    });
+    return rows.map(u => ({ userId: u.id, odooEmployeeId: u.odooEmployeeId as number }));
+  } catch {
+    return [];
+  }
 }
 

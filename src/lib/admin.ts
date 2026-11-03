@@ -73,7 +73,7 @@ export async function driverRows(c: OdooClient, f: DriverFilter, pg: Paging, now
         id: e.id, name: e.name, active: e.active, jobTitle: e.jobTitle ?? null,
         shift: { state: o ? "checked_in" as const : "checked_out" as const, checkIn: o?.checkIn ?? null, lastCheckOut: h?.checkOut ?? null, durationMinutes: mins, overdue: mins != null && mins > STALE_SHIFT_HOURS * 60 },
         vehicle: v ? { id: v.id, plate: v.plate, model: v.model ?? null } : null,
-        vendor: v?.vendorId ? { id: v.vendorId, name: vendors.get(v.vendorId)?.name ?? null } : null,
+        vendor: (v?.vendorId || v?.vendorName) ? { id: v.vendorId ?? 0, name: vendors.get(v.vendorId ?? 0)?.name ?? v.vendorName ?? null } : null,
       };
     });
     return { rows, total: page.total, page: pg.page, pageSize: pg.pageSize, generatedAt: new Date(now).toISOString() };
@@ -98,7 +98,7 @@ export async function vehicleRows(c: OdooClient, q: { search?: string; status?: 
     const vendors = new Map((await c.getVendors([...new Set(page.rows.map((v: OdooVehicle) => v.vendorId).filter((x): x is number => !!x))])).map(v => [v.id, v]));
     const rows = page.rows.map(v => {
       const a = asg.find(x => x.vehicleId === v.id);
-      return { id: v.id, plate: v.plate, model: v.model ?? null, active: v.active, vendor: v.vendorId ? { id: v.vendorId, name: vendors.get(v.vendorId)?.name ?? null } : null,
+      return { id: v.id, plate: v.plate, model: v.model ?? null, active: v.active, vendor: (v.vendorId || v.vendorName) ? { id: v.vendorId ?? 0, name: vendors.get(v.vendorId ?? 0)?.name ?? v.vendorName ?? null } : null,
         driver: a ? { id: a.employeeId, name: drivers.get(a.employeeId)?.name ?? null, since: a.from } : null };
     });
     return { rows, total: page.total, page: pg.page, pageSize: pg.pageSize, fines: unavailable("Fine history arrives with the fines stage.") };

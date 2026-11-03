@@ -17,7 +17,7 @@ export default function Vehicles() {
       {error && <div className="err" role="alert">{error}</div>}
       <div className="tbl"><table><thead><tr><th>Registration</th><th>Make / model</th><th>Status</th><th>Vendor</th><th>Current driver</th></tr></thead><tbody>
         {loading && !data && <tr><td colSpan={5}>Loading…</td></tr>}{data?.rows.length === 0 && <tr><td colSpan={5}>No vehicles match.</td></tr>}
-        {data?.rows.map(v => <tr key={v.id}><td><b>{v.plate}</b></td><td>{v.model ?? "—"}</td><td><span className={`tag ${v.active ? "g" : ""}`}>{v.active ? "Active" : "Inactive"}</span></td><td>{v.vendor?.name ?? "—"}</td><td>{v.driver?.name ?? "Unassigned"}</td></tr>)}
+        {data?.rows.map(v => <tr key={v.id}><td><b>{v.plate}</b></td><td>{v.model ?? "—"}</td><td><span className={`tag ${v.active ? "g" : ""}`}>{v.active ? "Active" : "Inactive"}</span></td><td>{v.vendor?.name ?? "Vendor not assigned in Odoo"}</td><td>{v.driver?.name ?? "Unassigned"}</td></tr>)}
       </tbody></table></div>
       {data && <Pager page={data.page} pageSize={data.pageSize} total={data.total} onPage={setPage} />}
     </AdminShell>

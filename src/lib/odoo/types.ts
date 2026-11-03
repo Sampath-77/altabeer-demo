@@ -1,5 +1,5 @@
 export interface OdooEmployee { id: number; name: string; active: boolean; jobTitle?: string }
-export interface OdooVehicle { id: number; plate: string; make?: string; model?: string; vendorId?: number; active: boolean }
+export interface OdooVehicle { id: number; plate: string; make?: string; model?: string; vendorId?: number; vendorName?: string; currentDriverId?: number; currentDriverName?: string; vehicleStatus?: string; active: boolean }
 export interface OdooAssignment { vehicleId: number; employeeId: number; from: string; to?: string | null }
 /** Timestamps are ISO-8601 UTC strings. */
 export interface OdooAttendance { id: number; employeeId: number; checkIn: string; checkOut?: string | null }

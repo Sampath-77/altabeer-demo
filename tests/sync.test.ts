@@ -20,7 +20,7 @@ function env(fines: FineRec[] = [fine()]) {
     submissionsToPoll: async () => subs.filter(s => !["paid", "refused"].includes(s.lastStatus ?? "")), setSubmissionStatus: async (id, st) => { subs.find(s => s.id === id)!.lastStatus = st; },
     driverUsers: async () => [{ userId: "u1", employeeId: 7 }, { userId: "u2", employeeId: 8 }], runResult: async (r, ok, e) => { runs[r] = ok ? "ok" : e ?? "failed"; },
   };
-  const odoo = new MockOdoo(); let t = NOW; const deps: SyncDeps = { odoo, repo, now: () => t };
+  const odoo = new MockOdoo(); let t = NOW; odoo.clock = () => t; const deps: SyncDeps = { odoo, repo, now: () => t };
   return { deps, odoo, F, ops, audits, notes, runs, enq, at: (x: number) => (t = x), subs };
 }
 const q = (e: ReturnType<typeof env>, id = "f1", k = "k1") => e.enq({ idempotencyKey: k, operation: "fine.status", payload: { fineId: id } });
