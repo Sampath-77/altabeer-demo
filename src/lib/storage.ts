@@ -33,7 +33,7 @@ const memCache = new Map<string, Buffer>();
 const memCacheMeta = new Map<string, { filename: string; mime: string; uploadedBy?: string; fineId?: string }>();
 
 let tableEnsured = false;
-async function ensureTable(): Promise<void> {
+export async function ensureTable(): Promise<void> {
   if (tableEnsured) return;
   try {
     await prisma.$executeRawUnsafe(`
@@ -51,13 +51,14 @@ async function ensureTable(): Promise<void> {
         "externalUrl" TEXT,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS "ChallanDocument_fineId_idx" ON "ChallanDocument"("fineId");
-      CREATE INDEX IF NOT EXISTS "ChallanDocument_storageKey_idx" ON "ChallanDocument"("storageKey");
+      )
     `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ChallanDocument_fineId_idx" ON "ChallanDocument"("fineId")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ChallanDocument_storageKey_idx" ON "ChallanDocument"("storageKey")`);
     tableEnsured = true;
-  } catch {
+  } catch (err) {
     // If running without direct DDL permissions or in non-Postgres test mock, ignore
+    console.warn("Table auto-migration note:", err instanceof Error ? err.message : err);
   }
 }
 
